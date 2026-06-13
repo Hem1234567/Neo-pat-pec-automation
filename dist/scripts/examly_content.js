@@ -256,11 +256,11 @@ async function handleTestAutomation() {
             console.log("[Examly Auto] No radio buttons found. Could be a Coding Question or loading...");
             await new Promise(r => setTimeout(r, 3000));
             
-            // basic check for monaco
-            if (document.querySelector('.monaco-editor')) {
-                // Scrape only the left side if possible, or everything
-                const leftSide = document.querySelector('.problem-statement, .description, .left-pane') || playground || document.body;
-                const prompt = `Solve this coding problem in Java. Return ONLY raw valid code. No markdown blocks. Problem text:\n\n${leftSide.innerText.substring(0, 2000)}`;
+            // basic check for monaco or generic coding interface
+            if (document.querySelector('.monaco-editor') || document.querySelector('app-monaco-editor') || document.querySelector('content-right')) {
+                // Scrape the left side to get the exact problem text
+                const leftSide = document.querySelector('content-left') || document.querySelector('.problem-statement, .description, .left-pane') || playground || document.body;
+                const prompt = `Solve this coding problem in Java. Return ONLY raw valid code. No markdown blocks. Problem text:\n\n${leftSide.innerText.substring(0, 3000)}`;
                 const code = await askGemini(prompt);
                 if (code) {
                    const script = document.createElement('script');
@@ -271,10 +271,13 @@ async function handleTestAutomation() {
                 
                 await new Promise(r => setTimeout(r, 2000));
                 
-                // Click compile/submit code if possible
-                const runBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText && btn.innerText.includes('Run'));
-                if (runBtn) runBtn.click();
-                await new Promise(r => setTimeout(r, 5000));
+                // Click compile/execute code if possible
+                const runBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText && (btn.innerText.includes('Run') || btn.innerText.includes('Execute')));
+                if (runBtn) {
+                    console.log("[Examly Auto] Clicking Execute button...");
+                    runBtn.click();
+                }
+                await new Promise(r => setTimeout(r, 6000)); // wait for test cases to evaluate
 
                 const unattemptedQuestions = document.querySelectorAll('[aria-labelledby="not-attempted"]');
                 if (unattemptedQuestions.length > 0) {
