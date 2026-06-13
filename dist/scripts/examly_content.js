@@ -291,8 +291,39 @@ async function handleTestAutomation() {
                 if (runBtn) {
                     console.log("[Examly Auto] Clicking Execute button...");
                     runBtn.click();
+                    await new Promise(r => setTimeout(r, 6000)); // wait for test cases to evaluate
                 }
-                await new Promise(r => setTimeout(r, 6000)); // wait for test cases to evaluate
+                
+                // Click Submit Code for the individual problem
+                const submitCodeBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText && (btn.innerText.trim() === 'Submit Code' || btn.innerText.trim() === 'Submit'));
+                if (submitCodeBtn) {
+                    console.log("[Examly Auto] Clicking Submit Code button...");
+                    submitCodeBtn.click();
+                    await new Promise(r => setTimeout(r, 3000));
+                }
+
+                // Check if the "END" confirmation modal appeared (happens if it's the last question)
+                let confirmInputs = Array.from(document.querySelectorAll('input[type="text"]'));
+                let isEndModalOpen = confirmInputs.some(input => input.offsetParent !== null) && document.body.innerText.includes('END');
+                
+                if (isEndModalOpen) {
+                    console.log("[Examly Auto] Final submission modal detected after Submit Code!");
+                    for (let input of confirmInputs) {
+                        if (input.offsetParent !== null) {
+                            input.value = "END";
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                            input.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                    await new Promise(r => setTimeout(r, 1000));
+
+                    const confirmSubmit = Array.from(document.querySelectorAll('button')).find(btn => btn.offsetParent !== null && btn.innerText && btn.innerText.trim().toUpperCase() === "YES") || document.querySelector('#confirm-submit, button.primary-btn-color:not(#tt-header-submit)');
+                    if (confirmSubmit) confirmSubmit.click();
+                    
+                    testRunning = false;
+                    await new Promise(r => setTimeout(r, 5000));
+                    continue; // Break out of test loop
+                }
 
                 const unattemptedQuestions = document.querySelectorAll('[aria-labelledby="not-attempted"]');
                 if (unattemptedQuestions.length > 0) {
@@ -300,20 +331,23 @@ async function handleTestAutomation() {
                     unattemptedQuestions[0].click();
                     await new Promise(r => setTimeout(r, 3000));
                 } else {
-                    console.log("[Examly Auto] No unattempted questions left. Submitting Test...");
-                    submitBtn.click();
+                    console.log("[Examly Auto] No unattempted questions left. Manually triggering Submit Test...");
+                    const mainSubmitBtn = document.querySelector('#tt-header-submit');
+                    if (mainSubmitBtn) mainSubmitBtn.click();
                     await new Promise(r => setTimeout(r, 2000));
                     
-                    const confirmInputs = document.querySelectorAll('input[type="text"]');
+                    confirmInputs = Array.from(document.querySelectorAll('input[type="text"]'));
                     for (let input of confirmInputs) {
-                        input.value = "END";
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                        if (input.offsetParent !== null) {
+                            input.value = "END";
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                            input.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
                     }
                     
                     await new Promise(r => setTimeout(r, 1000));
 
-                    const confirmSubmit = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText && btn.innerText.trim().toUpperCase() === "YES") || document.querySelector('#confirm-submit, button.primary-btn-color:not(#tt-header-submit)');
+                    const confirmSubmit = Array.from(document.querySelectorAll('button')).find(btn => btn.offsetParent !== null && btn.innerText && btn.innerText.trim().toUpperCase() === "YES") || document.querySelector('#confirm-submit, button.primary-btn-color:not(#tt-header-submit)');
                     if (confirmSubmit) confirmSubmit.click();
                     
                     testRunning = false;
