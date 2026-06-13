@@ -149,28 +149,43 @@ async function handleTestAutomation() {
         }
         fallbackLoopCount++;
 
-        // 1. Bypass Pre-Test Modals
-        const takeTestBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => el.innerText && el.innerText.trim().toUpperCase() === "TAKE TEST");
-        if (takeTestBtn && takeTestBtn.offsetParent !== null) {
-            console.log("[Examly Auto] Clicking Take Test...");
-            takeTestBtn.click();
-            await new Promise(r => setTimeout(r, 3000));
+        // 1. Bypass Pre-Test Modals (PRIORITY ORDER IS IMPORTANT)
+        
+        // A) First, check if there's an Agree & Proceed button (and click any checkboxes if needed)
+        const agreeBtn = document.querySelector('#tt-start-accept') || Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => el.innerText && el.innerText.trim().toUpperCase().includes("AGREE"));
+        if (agreeBtn && agreeBtn.offsetParent !== null) {
+            // Check for terms checkbox
+            const termsCheckbox = document.querySelector('input[type="checkbox"]');
+            if (termsCheckbox && !termsCheckbox.checked) {
+                console.log("[Examly Auto] Checking Terms & Conditions...");
+                termsCheckbox.click();
+                await new Promise(r => setTimeout(r, 1000));
+            }
+            
+            console.log("[Examly Auto] Clicking Agree & Proceed...");
+            agreeBtn.click();
+            await new Promise(r => setTimeout(r, 5000));
             continue;
         }
 
+        // B) Check for Take Test button
+        const takeTestBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => el.innerText && el.innerText.trim().toUpperCase() === "TAKE TEST");
+        if (takeTestBtn && takeTestBtn.offsetParent !== null) {
+            // Ensure we don't spam click it if the modal is already open
+            if (!document.querySelector('.modal, .dialog') && !agreeBtn) {
+                console.log("[Examly Auto] Clicking Take Test...");
+                takeTestBtn.click();
+                await new Promise(r => setTimeout(r, 3000));
+                continue;
+            }
+        }
+
+        // C) Check for Retake Test button
         const retakeBtn = document.querySelector('button.retake-btn-color, #undefinedRetake\\ Test');
         if (retakeBtn && retakeBtn.offsetParent !== null) {
             console.log("[Examly Auto] Clicking Retake Test...");
             retakeBtn.click();
             await new Promise(r => setTimeout(r, 3000));
-            continue;
-        }
-
-        const agreeBtn = document.querySelector('#tt-start-accept') || Array.from(document.querySelectorAll('button, a')).find(el => el.innerText && el.innerText.trim().toUpperCase().includes("AGREE"));
-        if (agreeBtn && agreeBtn.offsetParent !== null) {
-            console.log("[Examly Auto] Clicking Agree & Proceed...");
-            agreeBtn.click();
-            await new Promise(r => setTimeout(r, 5000));
             continue;
         }
 
