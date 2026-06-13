@@ -1,6 +1,6 @@
-### Contribution Guidelines for Coursera Automation Extension
+### Contribution Guidelines for Neo-pat-PEC Automation Extension
 
-Thank you for considering contributing to the Coursera Automation Extension! Here are some guidelines to help you get started:
+Thank you for considering contributing to the Neo-pat-PEC Automation Extension! Here are some guidelines to help you get started:
 
 ## How to Contribute
 

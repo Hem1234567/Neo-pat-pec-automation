@@ -23,7 +23,7 @@ body {
   margin: 0;
 }
 
-#courseraModelContent {
+#Neo-pat-PECModelContent {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -147,7 +147,7 @@ body {
   color: #ff4444 !important;
 }
 
-#courseraModelTitle {
+#Neo-pat-PECModelTitle {
   font-size: 19px;
   font-weight: 800;
   margin: 4px 0 4px 0;
@@ -159,17 +159,17 @@ body {
 }
 
 /* Grid Layout */
-#courseraModelGrid {
+#Neo-pat-PECModelGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
-.courseraBtnWrapper {
+.Neo-pat-PECBtnWrapper {
   position: relative;
 }
 
-.courseraModelBtn {
+.Neo-pat-PECModelBtn {
   width: 100%;
   padding: 12px 10px;
   background: var(--glass);
@@ -209,26 +209,26 @@ body {
   border: 1px solid var(--primary);
 }
 
-.courseraBtnWrapper:not(.paid-only) .feature-badge {
+.Neo-pat-PECBtnWrapper:not(.paid-only) .feature-badge {
   background: rgba(0, 255, 136, 0.1);
   color: var(--primary);
   border: 1px solid var(--primary-glow);
 }
 
-.courseraModelBtn:hover:not(:disabled) {
+.Neo-pat-PECModelBtn:hover:not(:disabled) {
   background: var(--glass-border);
   border-color: var(--primary);
   color: #fff;
   transform: translateY(-1px);
 }
 
-.is-activated .courseraModelBtn {
+.is-activated .Neo-pat-PECModelBtn {
   border-color: var(--primary);
   box-shadow: 0 0 15px rgba(0, 255, 136, 0.1), inset 0 0 10px rgba(0, 255, 136, 0.05);
   color: #fff;
 }
 
-.courseraModelBtn:disabled {
+.Neo-pat-PECModelBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   filter: grayscale(1);
@@ -259,7 +259,7 @@ body {
 }
 
 /* Tooltip Styling */
-.courseraTooltip {
+.Neo-pat-PECTooltip {
   visibility: hidden;
   width: 180px;
   background: #1e1e1e;
@@ -279,7 +279,7 @@ body {
   pointer-events: none;
 }
 
-.courseraBtnWrapper:hover .courseraTooltip {
+.Neo-pat-PECBtnWrapper:hover .Neo-pat-PECTooltip {
   visibility: visible;
   opacity: 1;
 }

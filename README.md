@@ -1,12 +1,12 @@
-# Coursera Automation Extension
+# Neo-pat-PEC Automation Extension
 
 ![Version](https://img.shields.io/badge/version-3.6.6-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Platform](https://img.shields.io/badge/platform-Chrome-blue)
 
-> 🚀 **Visit the Official Website:** [👉 algoplug.com/products/coursera-automation](https://algoplug.com/products/coursera-automation)
+> 🚀 **Visit the Official Website:** [👉 algoplug.com/products/Neo-pat-PEC-automation](https://algoplug.com/products/Neo-pat-PEC-automation)
 
-Using this extension, complete Coursera courses within seconds. It can be used for free to complete lectures, dialogue, reading materials, ungraded plugins, discussions, shareable link and course backup. `Note:` Quiz completion, Skip Video+ and Course backup is a paid feature.
+Using this extension, complete Neo-pat-PEC courses within seconds. It can be used for free to complete lectures, dialogue, reading materials, ungraded plugins, discussions, shareable link and course backup. `Note:` Quiz completion, Skip Video+ and Course backup is a paid feature.
 
 `Disclaimer:` Quiz Automation provides AI-generated answers, which may not always be accurate.
 
@@ -26,7 +26,7 @@ Using this extension, complete Coursera courses within seconds. It can be used f
 ## Demo
 
 <div align="center">
-  <a href="https://youtu.be/jKkWUVLRLnE"><img src="https://i.ytimg.com/vi/jKkWUVLRLnE/hqdefault.jpg" alt="Coursera Automation Extension"></a>
+  <a href="https://youtu.be/jKkWUVLRLnE"><img src="https://i.ytimg.com/vi/jKkWUVLRLnE/hqdefault.jpg" alt="Neo-pat-PEC Automation Extension"></a>
 </div>
 
 ## Features Status
@@ -55,7 +55,7 @@ Using this extension, complete Coursera courses within seconds. It can be used f
 
 ## How to use
 
-1. Open your Coursera course.
+1. Open your Neo-pat-PEC course.
 2. Click on the Extension icon.
 3. Choose the task you want to automate.
 4. Sit back while the Extension completes the task.
@@ -70,7 +70,7 @@ To generate a **Shareable Link** for your assignment submission:
 
 ## Skip Video+
 
-Automatically skip Coursera video lectures and mark them as completed.
+Automatically skip Neo-pat-PEC video lectures and mark them as completed.
 
 - Remove the existing extension, then Reinstall the extension.
 
@@ -105,10 +105,10 @@ If you find this extension helpful, consider supporting its development to keep 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/sauravhathi/coursera-automation-extension/blob/master/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/sauravhathi/Neo-pat-PEC-automation-extension/blob/master/LICENSE) file for details.
 
 ---
 
-> ⚠️ This extension is an independent tool designed for personal learning productivity and is not affiliated with or endorsed by Coursera.
+> ⚠️ This extension is an independent tool designed for personal learning productivity and is not affiliated with or endorsed by Neo-pat-PEC.
 
 ---
