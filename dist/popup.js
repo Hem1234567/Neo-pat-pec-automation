@@ -1,7 +1,24 @@
 document.addEventListener('DOMContentLoaded', () => {
   const startBtn = document.getElementById('start-btn');
   const inspectBtn = document.getElementById('inspect-btn');
+  const saveBtn = document.getElementById('save-btn');
+  const apiKeyInput = document.getElementById('api-key');
   const statusDiv = document.getElementById('status');
+
+  // Load existing API key
+  chrome.storage.local.get(['geminiApiKey'], (result) => {
+    if (result.geminiApiKey) {
+      apiKeyInput.value = result.geminiApiKey;
+    }
+  });
+
+  saveBtn.addEventListener('click', () => {
+    const key = apiKeyInput.value.trim();
+    chrome.storage.local.set({ geminiApiKey: key }, () => {
+      statusDiv.textContent = 'API Key saved successfully!';
+      setTimeout(() => statusDiv.textContent = 'Ready', 2000);
+    });
+  });
 
   function sendMessageToContent(action, callback) {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {

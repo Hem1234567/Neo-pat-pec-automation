@@ -104,6 +104,164 @@ async function expandAllFolders() {
     if (clickedAny) await expandAllFolders();
 }
 
+async function askGemini(prompt) {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(['geminiApiKey'], async (result) => {
+            const apiKey = result.geminiApiKey;
+            if (!apiKey) {
+                alert("Gemini API Key missing! Please add it in the extension popup to use Test Automation.");
+                resolve(null);
+                return;
+            }
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 0.1 }
+                    })
+                });
+                const data = await response.json();
+                if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    let ans = data.candidates[0].content.parts[0].text.trim();
+                    ans = ans.replace(/```/g, ''); // strip markdown blocks if any
+                    resolve(ans);
+                } else {
+                    resolve(null);
+                }
+            } catch(e) {
+                console.error("Gemini API error", e);
+                resolve(null);
+            }
+        });
+    });
+}
+
+async function handleTestAutomation() {
+    let testRunning = true;
+    let fallbackLoopCount = 0;
+
+    while (testRunning && window.examlyAutomationRunning) {
+        if (fallbackLoopCount > 50) {
+            console.log("Stuck in test loop. Exiting test.");
+            break; 
+        }
+        fallbackLoopCount++;
+
+        // 1. Bypass Pre-Test Modals
+        const retakeBtn = document.querySelector('button.retake-btn-color, #undefinedRetake\\ Test');
+        if (retakeBtn && retakeBtn.offsetParent !== null) {
+            console.log("[Examly Auto] Clicking Retake Test...");
+            retakeBtn.click();
+            await new Promise(r => setTimeout(r, 3000));
+            continue;
+        }
+
+        const agreeBtn = document.querySelector('#tt-start-accept');
+        if (agreeBtn && agreeBtn.offsetParent !== null) {
+            console.log("[Examly Auto] Clicking Agree & Proceed...");
+            agreeBtn.click();
+            await new Promise(r => setTimeout(r, 5000));
+            continue;
+        }
+
+        // 2. Are we on the question screen?
+        const submitBtn = document.querySelector('#tt-header-submit');
+        if (!submitBtn) {
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+        }
+
+        // 3. Process the Question
+        // We will extract text from the entire page excluding the sidebar/header for context
+        let mainContext = "";
+        const playground = document.querySelector('testtaking-playground') || document.querySelector('[aria-labelledby="question-answer"]');
+        if (playground) {
+            mainContext = playground.innerText;
+        } else {
+            mainContext = document.body.innerText.substring(0, 2000); 
+        }
+
+        const radioBtns = Array.from(document.querySelectorAll('input[type="radio"], [role="radio"]'));
+        
+        if (radioBtns.length > 0) {
+            console.log("[Examly Auto] Detected MCQ Question.");
+            const prompt = `Solve this multiple-choice question. Here is the raw text of the question screen including the options:\n\n${mainContext}\n\nRespond with ONLY the exact text of the correct option. Do not explain. Do not include A, B, C, D unless the option itself is just a letter.`;
+            
+            const answer = await askGemini(prompt);
+            console.log("[Examly Auto] Gemini Answer:", answer);
+
+            if (answer) {
+                // Try to click the element containing the exact answer text
+                let clicked = false;
+                const allElements = Array.from(document.querySelectorAll('*'));
+                for (let el of allElements) {
+                    if (el.innerText && el.innerText.trim().includes(answer.trim()) && el.children.length === 0) {
+                        el.click();
+                        if (el.parentElement) el.parentElement.click(); // often the click target is a parent label
+                        clicked = true;
+                        break;
+                    }
+                }
+                if (!clicked) {
+                   console.log("[Examly Auto] Could not perfectly match text, clicking first option as fallback.");
+                   if(radioBtns[0]) radioBtns[0].click();
+                }
+            } else {
+               if(radioBtns[0]) radioBtns[0].click();
+            }
+
+            await new Promise(r => setTimeout(r, 2000));
+
+            // 4. Navigate Next
+            const nextBtn = document.querySelector('div[tooltip="Next"], img[src*="next.svg"]')?.closest('div.t-cursor-pointer') || document.querySelector('.next-btn');
+            
+            // Check if we reached the last question. Examly often disables the next button.
+            let isNextDisabled = nextBtn && (nextBtn.classList.contains('disabled') || nextBtn.getAttribute('disabled') !== null || nextBtn.style.opacity === '0.5');
+            
+            if (nextBtn && !isNextDisabled && fallbackLoopCount < 40) {
+                console.log("[Examly Auto] Clicking Next Question...");
+                nextBtn.click();
+                await new Promise(r => setTimeout(r, 3000));
+            } else {
+                console.log("[Examly Auto] Submitting Test...");
+                submitBtn.click();
+                await new Promise(r => setTimeout(r, 2000));
+                
+                // Confirm submission modal
+                const confirmSubmit = document.querySelector('#confirm-submit, button.primary-btn-color:not(#tt-header-submit)');
+                if (confirmSubmit) confirmSubmit.click();
+                
+                testRunning = false;
+                await new Promise(r => setTimeout(r, 5000));
+            }
+
+        } else {
+            console.log("[Examly Auto] No radio buttons found. Could be a Coding Question or loading...");
+            await new Promise(r => setTimeout(r, 3000));
+            
+            // basic check for monaco
+            if (document.querySelector('.monaco-editor')) {
+                const prompt = `Solve this coding problem in Java. Return ONLY raw valid code. No markdown blocks.\n\n${mainContext}`;
+                const code = await askGemini(prompt);
+                if (code) {
+                   const script = document.createElement('script');
+                   script.textContent = `if(window.monaco){ try { window.monaco.editor.getModels()[0].setValue(\`${code.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`); }catch(e){} }`;
+                   document.body.appendChild(script);
+                   script.remove();
+                }
+                await new Promise(r => setTimeout(r, 2000));
+                
+                // Click compile/submit code if possible, then submit test
+                submitBtn.click();
+                testRunning = false;
+                await new Promise(r => setTimeout(r, 5000));
+            }
+        }
+    }
+}
+
 async function startExamlyAutomation() {
   alert("Automation starting! Added support for YouTube and 3rd party embedded videos.");
 
@@ -169,6 +327,8 @@ async function startExamlyAutomation() {
       let previousVideoSrc = currentVideoState.src;
       
       let waitLoops = 0;
+      let isTest = false;
+
       while (!currentVideoState.found && waitLoops < 20) {
           if (!window.examlyAutomationRunning) return;
           
@@ -177,6 +337,13 @@ async function startExamlyAutomation() {
               try { f.contentWindow.postMessage({ action: 'play_and_monitor_video' }, '*'); } catch(e){}
           });
           
+          // Check if this module is actually a test page!
+          const testAcceptBtn = document.querySelector('#tt-start-accept, #undefinedRetake\\ Test, #tt-header-submit');
+          if (testAcceptBtn) {
+              isTest = true;
+              break;
+          }
+
           await new Promise(r => setTimeout(r, 1000));
           
           if (currentVideoState.found && currentVideoState.src === previousVideoSrc) {
@@ -185,6 +352,13 @@ async function startExamlyAutomation() {
           waitLoops++;
       }
       
+      if (isTest) {
+          console.log("[Examly Auto] Test Interface detected! Launching Test Automation...");
+          await handleTestAutomation();
+          await new Promise(r => setTimeout(r, 3000)); // Buffer before clicking next module
+          continue;
+      }
+
       if (!currentVideoState.found) {
           console.log("[Examly Auto] No video detected for this module after 20 seconds. Skipping to next.");
           continue;

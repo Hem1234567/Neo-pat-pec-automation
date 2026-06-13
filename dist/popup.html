@@ -42,6 +42,31 @@
       text-align: center;
       color: #7f8c8d;
     }
+    .settings-group {
+      margin-top: 15px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
+    }
+    .settings-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #2c3e50;
+    }
+    .settings-group input {
+      width: calc(100% - 16px);
+      padding: 6px;
+      margin-bottom: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #save-btn {
+      background-color: #2ecc71;
+    }
+    #save-btn:hover {
+      background-color: #27ae60;
+    }
   </style>
 </head>
 <body>
@@ -49,6 +74,13 @@
   <button id="start-btn">Start Automation</button>
   <button id="inspect-btn">Inspect Page Info</button>
   <div id="status">Ready</div>
+
+  <div class="settings-group">
+    <label for="api-key">Gemini API Key (For Tests):</label>
+    <input type="password" id="api-key" placeholder="Enter API Key" />
+    <button id="save-btn">Save Key</button>
+  </div>
+  
   <script src="popup.js"></script>
 </body>
 </html>
