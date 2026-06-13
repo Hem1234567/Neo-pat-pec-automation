@@ -150,6 +150,14 @@ async function handleTestAutomation() {
         fallbackLoopCount++;
 
         // 1. Bypass Pre-Test Modals
+        const takeTestBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => el.innerText && el.innerText.trim().toUpperCase() === "TAKE TEST");
+        if (takeTestBtn && takeTestBtn.offsetParent !== null) {
+            console.log("[Examly Auto] Clicking Take Test...");
+            takeTestBtn.click();
+            await new Promise(r => setTimeout(r, 3000));
+            continue;
+        }
+
         const retakeBtn = document.querySelector('button.retake-btn-color, #undefinedRetake\\ Test');
         if (retakeBtn && retakeBtn.offsetParent !== null) {
             console.log("[Examly Auto] Clicking Retake Test...");
@@ -375,7 +383,9 @@ async function startExamlyAutomation() {
           
           // Check if this module is actually a test page!
           const testAcceptBtn = document.querySelector('#tt-start-accept, #undefinedRetake\\ Test, #tt-header-submit');
-          if (testAcceptBtn) {
+          const takeTestBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => el.innerText && el.innerText.trim().toUpperCase() === "TAKE TEST");
+          
+          if (testAcceptBtn || takeTestBtn) {
               isTest = true;
               break;
           }
