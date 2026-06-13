@@ -183,7 +183,7 @@ async function handleTestAutomation() {
             mainContext = document.body.innerText.substring(0, 2000); 
         }
 
-        const radioBtns = Array.from(document.querySelectorAll('input[type="radio"], [role="radio"]'));
+        const radioBtns = Array.from(document.querySelectorAll('input[type="radio"], [role="radio"], .option-container'));
         
         if (radioBtns.length > 0) {
             console.log("[Examly Auto] Detected MCQ Question.");
@@ -199,7 +199,7 @@ async function handleTestAutomation() {
                 for (let el of allElements) {
                     if (el.innerText && el.innerText.trim().includes(answer.trim()) && el.children.length === 0) {
                         el.click();
-                        if (el.parentElement) el.parentElement.click(); // often the click target is a parent label
+                        if (el.parentElement) el.parentElement.click(); 
                         clicked = true;
                         break;
                     }
@@ -214,23 +214,30 @@ async function handleTestAutomation() {
 
             await new Promise(r => setTimeout(r, 2000));
 
-            // 4. Navigate Next
-            const nextBtn = document.querySelector('div[tooltip="Next"], img[src*="next.svg"]')?.closest('div.t-cursor-pointer') || document.querySelector('.next-btn');
+            // 4. Navigate to Next Unattempted Question instead of relying on "Next" button
+            const unattemptedQuestions = document.querySelectorAll('[aria-labelledby="not-attempted"]');
             
-            // Check if we reached the last question. Examly often disables the next button.
-            let isNextDisabled = nextBtn && (nextBtn.classList.contains('disabled') || nextBtn.getAttribute('disabled') !== null || nextBtn.style.opacity === '0.5');
-            
-            if (nextBtn && !isNextDisabled && fallbackLoopCount < 40) {
-                console.log("[Examly Auto] Clicking Next Question...");
-                nextBtn.click();
+            if (unattemptedQuestions.length > 0) {
+                console.log(`[Examly Auto] Found ${unattemptedQuestions.length} unattempted questions. Clicking the next one...`);
+                unattemptedQuestions[0].click();
                 await new Promise(r => setTimeout(r, 3000));
             } else {
-                console.log("[Examly Auto] Submitting Test...");
+                console.log("[Examly Auto] No unattempted questions left. Submitting Test...");
                 submitBtn.click();
                 await new Promise(r => setTimeout(r, 2000));
                 
-                // Confirm submission modal
-                const confirmSubmit = document.querySelector('#confirm-submit, button.primary-btn-color:not(#tt-header-submit)');
+                // Deal with the "Type END to confirm" modal
+                const confirmInputs = document.querySelectorAll('input[type="text"]');
+                for (let input of confirmInputs) {
+                    input.value = "END";
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                
+                await new Promise(r => setTimeout(r, 1000));
+
+                // Find the "YES" or "Submit" button in the modal
+                const confirmSubmit = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText && btn.innerText.trim().toUpperCase() === "YES") || document.querySelector('#confirm-submit, button.primary-btn-color:not(#tt-header-submit)');
                 if (confirmSubmit) confirmSubmit.click();
                 
                 testRunning = false;
@@ -243,7 +250,9 @@ async function handleTestAutomation() {
             
             // basic check for monaco
             if (document.querySelector('.monaco-editor')) {
-                const prompt = `Solve this coding problem in Java. Return ONLY raw valid code. No markdown blocks.\n\n${mainContext}`;
+                // Scrape only the left side if possible, or everything
+                const leftSide = document.querySelector('.problem-statement, .description, .left-pane') || playground || document.body;
+                const prompt = `Solve this coding problem in Java. Return ONLY raw valid code. No markdown blocks. Problem text:\n\n${leftSide.innerText.substring(0, 2000)}`;
                 const code = await askGemini(prompt);
                 if (code) {
                    const script = document.createElement('script');
@@ -251,12 +260,39 @@ async function handleTestAutomation() {
                    document.body.appendChild(script);
                    script.remove();
                 }
+                
                 await new Promise(r => setTimeout(r, 2000));
                 
-                // Click compile/submit code if possible, then submit test
-                submitBtn.click();
-                testRunning = false;
+                // Click compile/submit code if possible
+                const runBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText && btn.innerText.includes('Run'));
+                if (runBtn) runBtn.click();
                 await new Promise(r => setTimeout(r, 5000));
+
+                const unattemptedQuestions = document.querySelectorAll('[aria-labelledby="not-attempted"]');
+                if (unattemptedQuestions.length > 0) {
+                    console.log(`[Examly Auto] Found ${unattemptedQuestions.length} unattempted questions. Clicking the next one...`);
+                    unattemptedQuestions[0].click();
+                    await new Promise(r => setTimeout(r, 3000));
+                } else {
+                    console.log("[Examly Auto] No unattempted questions left. Submitting Test...");
+                    submitBtn.click();
+                    await new Promise(r => setTimeout(r, 2000));
+                    
+                    const confirmInputs = document.querySelectorAll('input[type="text"]');
+                    for (let input of confirmInputs) {
+                        input.value = "END";
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    
+                    await new Promise(r => setTimeout(r, 1000));
+
+                    const confirmSubmit = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText && btn.innerText.trim().toUpperCase() === "YES") || document.querySelector('#confirm-submit, button.primary-btn-color:not(#tt-header-submit)');
+                    if (confirmSubmit) confirmSubmit.click();
+                    
+                    testRunning = false;
+                    await new Promise(r => setTimeout(r, 5000));
+                }
             }
         }
     }
