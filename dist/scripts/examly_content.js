@@ -166,7 +166,7 @@ async function handleTestAutomation() {
             continue;
         }
 
-        const agreeBtn = document.querySelector('#tt-start-accept');
+        const agreeBtn = document.querySelector('#tt-start-accept') || Array.from(document.querySelectorAll('button, a')).find(el => el.innerText && el.innerText.trim().toUpperCase().includes("AGREE"));
         if (agreeBtn && agreeBtn.offsetParent !== null) {
             console.log("[Examly Auto] Clicking Agree & Proceed...");
             agreeBtn.click();
