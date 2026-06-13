@@ -180,7 +180,16 @@ async function handleTestAutomation() {
             }
         }
 
-        // C) Check for Retake Test button
+        // C) Check for Enable Fullscreen Mode button
+        const fullscreenBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => el.innerText && (el.innerText.trim().toUpperCase().includes("FULLSCREEN") || el.innerText.trim().toUpperCase().includes("FULL SCREEN")));
+        if (fullscreenBtn && fullscreenBtn.offsetParent !== null) {
+            console.log("[Examly Auto] Clicking Enable Fullscreen Mode...");
+            fullscreenBtn.click();
+            await new Promise(r => setTimeout(r, 3000));
+            continue;
+        }
+
+        // D) Check for Retake Test button
         const retakeBtn = document.querySelector('button.retake-btn-color, #undefinedRetake\\ Test');
         if (retakeBtn && retakeBtn.offsetParent !== null) {
             console.log("[Examly Auto] Clicking Retake Test...");
