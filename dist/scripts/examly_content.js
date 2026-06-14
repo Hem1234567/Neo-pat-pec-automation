@@ -321,15 +321,15 @@ async function handleTestAutomation() {
                 const leftSide = document.querySelector('content-left') || document.querySelector('.problem-statement, .description, .left-pane') || playground || document.body;
                 const problemSnippet = leftSide.innerText.substring(0, 500).trim();
                 
-                // 1. Check if Whitelist question
+                // 1. Check if Whitelist or Blacklist question
                 const pageText = document.body.innerText.toLowerCase();
-                if (pageText.includes('whitelist') || pageText.includes('whitelist syntaxes')) {
-                    console.log("[Examly Auto] Whitelist question detected! Skipping.");
+                if (pageText.includes('whitelist') || pageText.includes('whitelist syntaxes') || pageText.includes('blacklist') || pageText.includes('blacklist syntaxes')) {
+                    console.log("[Examly Auto] Whitelist/Blacklist question detected! Skipping.");
                     window.examlyWhitelistSkips = (window.examlyWhitelistSkips || 0) + 1;
                     const unattemptedQuestions = document.querySelectorAll('[aria-labelledby="not-attempted"]');
                     
                     if (window.examlyWhitelistSkips >= Math.max(2, unattemptedQuestions.length + 1)) {
-                        console.log("[Examly Auto] All remaining unattempted questions are whitelist. ENDING TEST.");
+                        console.log("[Examly Auto] All remaining unattempted questions are whitelist/blacklist. ENDING TEST.");
                         const mainSubmitBtn = document.querySelector('#tt-header-submit');
                         if (mainSubmitBtn) mainSubmitBtn.click();
                         await new Promise(r => setTimeout(r, 2000));
