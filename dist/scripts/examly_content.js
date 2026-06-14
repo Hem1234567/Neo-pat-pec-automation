@@ -361,6 +361,15 @@ async function handleTestAutomation() {
                         unattemptedQuestions[randomIndex].click();
                     }
                     await new Promise(r => setTimeout(r, 3000));
+                    
+                    // Handle "Warning! Your code is not submitted!" popup
+                    const skipPopupBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText && btn.innerText.trim().includes('Skip'));
+                    if (skipPopupBtn && skipPopupBtn.offsetParent !== null) {
+                        console.log("[Examly Auto] Unsubmitted code warning popup detected. Clicking Skip...");
+                        skipPopupBtn.click();
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+                    
                     continue;
                 }
 
