@@ -87,13 +87,25 @@ window.addEventListener('message', async (event) => {
 async function expandAllFolders() {
     console.log("[Examly Auto] Checking for closed folders...");
     let clickedAny = false;
-    let modpointers = Array.from(document.querySelectorAll('.modpointer'));
+    let headers = Array.from(document.querySelectorAll('.modpointer'));
     
-    for (let el of modpointers) {
+    for (let el of headers) {
         const txt = el.textContent || "";
         if (!txt.includes("Start :")) {
-            const img = el.querySelector('img[src*="arrow"], img[alt*="arrow"]');
-            if (img && !img.src.includes('down') && !img.alt.includes('down')) {
+            let isCollapsed = false;
+            const html = el.innerHTML.toLowerCase();
+            
+            if (el.getAttribute('aria-expanded') === 'false' || 
+                (el.parentElement && el.parentElement.getAttribute('aria-expanded') === 'false')) {
+                isCollapsed = true;
+            } else if (html.includes('down') || html.includes('right') || html.includes('chevron-down')) {
+                if (!html.includes('up') && !html.includes('chevron-up')) {
+                    isCollapsed = true;
+                }
+            }
+            
+            if (isCollapsed) {
+                console.log("[Examly Auto] Expanding folder:", txt.trim().substring(0, 30));
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 el.click();
                 clickedAny = true;
@@ -136,6 +148,32 @@ async function askGemini(prompt) {
             }
         });
     });
+}
+
+async function closeTestInterface() {
+    console.log("[Examly Auto] Waiting for Exit/Close button after test...");
+    let exitAttempts = 0;
+    while(exitAttempts < 8) {
+        const exitBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => {
+            if (!el.innerText) return false;
+            const text = el.innerText.trim().toUpperCase();
+            return text.includes("EXIT FULLSCREEN") || 
+                   text.includes("EXIT FULL SCREEN") ||
+                   text === "EXIT" ||
+                   text === "CLOSE" ||
+                   text.includes("GO BACK") ||
+                   text.includes("BACK TO COURSE");
+        });
+        
+        if (exitBtn && exitBtn.offsetParent !== null) {
+            console.log("[Examly Auto] Clicking Exit button...");
+            exitBtn.click();
+            await new Promise(r => setTimeout(r, 3000));
+            return;
+        }
+        await new Promise(r => setTimeout(r, 1000));
+        exitAttempts++;
+    }
 }
 
 async function handleTestAutomation() {
@@ -181,7 +219,11 @@ async function handleTestAutomation() {
         }
 
         // C) Check for Enable Fullscreen Mode button
-        const fullscreenBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => el.innerText && (el.innerText.trim().toUpperCase().includes("FULLSCREEN") || el.innerText.trim().toUpperCase().includes("FULL SCREEN")));
+        const fullscreenBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => {
+            if (!el.innerText) return false;
+            const text = el.innerText.trim().toUpperCase();
+            return (text.includes("FULLSCREEN") || text.includes("FULL SCREEN")) && !text.includes("EXIT");
+        });
         if (fullscreenBtn && fullscreenBtn.offsetParent !== null) {
             console.log("[Examly Auto] Clicking Enable Fullscreen Mode...");
             fullscreenBtn.click();
@@ -189,15 +231,7 @@ async function handleTestAutomation() {
             continue;
         }
 
-        // D) Check for Retake Test button
-        const retakeBtn = document.querySelector('button.retake-btn-color, #undefinedRetake\\ Test');
-        if (retakeBtn && retakeBtn.offsetParent !== null) {
-            console.log("[Examly Auto] Clicking Retake Test...");
-            retakeBtn.click();
-            await new Promise(r => setTimeout(r, 3000));
-            continue;
-        }
-
+        // Removed Retake Test clicker to prevent infinite loops on already completed tests
         // 2. Are we on the question screen?
         const submitBtn = document.querySelector('#tt-header-submit');
         if (!submitBtn) {
@@ -274,6 +308,7 @@ async function handleTestAutomation() {
                 
                 testRunning = false;
                 await new Promise(r => setTimeout(r, 5000));
+                await closeTestInterface();
             }
 
         } else {
@@ -331,6 +366,7 @@ async function handleTestAutomation() {
                     
                     testRunning = false;
                     await new Promise(r => setTimeout(r, 5000));
+                    await closeTestInterface();
                     continue; // Break out of test loop
                 }
 
@@ -361,6 +397,7 @@ async function handleTestAutomation() {
                     
                     testRunning = false;
                     await new Promise(r => setTimeout(r, 5000));
+                    await closeTestInterface();
                 }
             }
         }
@@ -372,6 +409,23 @@ async function startExamlyAutomation() {
 
   await expandAllFolders();
 
+  window.examlyProcessedModules = window.examlyProcessedModules || new Set();
+
+  function getModuleKey(mod) {
+      if (!mod || !mod.innerText) return "";
+      let text = mod.innerText.toUpperCase();
+      if (text.includes("START :")) {
+          text = text.substring(0, text.indexOf("START :"));
+      } else if (text.includes("START")) {
+          text = text.substring(0, text.indexOf("START"));
+      }
+      text = text.replace(/\d+%/g, '');
+      text = text.replace(/\d+:\d+/g, '');
+      text = text.replace(/COMPLETED|ATTEMPT|SCORE|STATUS|VIDEO/g, '');
+      text = text.replace(/[^A-Z0-9]/g, '');
+      return text.substring(0, 100);
+  }
+
   function getModuleElements() {
     const all = Array.from(document.querySelectorAll('*'));
     const startElements = all.filter(el => el.textContent && el.textContent.includes("Start :"));
@@ -379,10 +433,14 @@ async function startExamlyAutomation() {
     
     const actualModules = deepestStart.map(el => {
         let card = el;
-        for(let i=0; i<3; i++) {
+        for(let j=0; j<3; j++) {
             if (card.parentElement && card.parentElement.tagName !== 'BODY') card = card.parentElement;
         }
         return card;
+    }).filter(mod => {
+        if (!mod || !mod.innerText) return false;
+        const key = getModuleKey(mod);
+        return key.length > 0 && !window.examlyProcessedModules.has(key);
     });
     
     const unique = [...new Set(actualModules)];
@@ -390,29 +448,30 @@ async function startExamlyAutomation() {
     return unique;
   }
 
-  const initialModules = getModuleElements();
-  const totalModules = initialModules.length;
-  
-  if (totalModules === 0) {
-    alert("Could not detect any video modules.");
-    window.examlyAutomationRunning = false;
-    return;
-  }
-
-  console.log(`[Examly Auto] Found ${totalModules} modules to process.`);
-
-  for (let i = 0; i < totalModules; i++) {
-      if (!window.examlyAutomationRunning) return;
-      
-      let currentModules = getModuleElements();
-      if (i >= currentModules.length) {
-          await expandAllFolders();
-          currentModules = getModuleElements();
-          if (i >= currentModules.length) break; 
+  let loopCount = 0;
+  while (window.examlyAutomationRunning) {
+      loopCount++;
+      if (loopCount > 1000) {
+          console.log("[Examly Auto] Max iterations reached. Stopping.");
+          break; 
       }
       
-      let mod = currentModules[i];
-      console.log(`[Examly Auto] Explicitly clicking module ${i + 1} from the sidebar...`);
+      let currentModules = getModuleElements();
+      if (currentModules.length === 0) {
+          await expandAllFolders();
+          currentModules = getModuleElements();
+          if (currentModules.length === 0) {
+              console.log("[Examly Auto] No more unprocessed modules found.");
+              break; 
+          }
+      }
+      
+      let mod = currentModules[0];
+      if (mod && mod.innerText) {
+          window.examlyProcessedModules.add(getModuleKey(mod));
+      }
+      
+      console.log("[Examly Auto] Explicitly clicking next unprocessed module...");
       
       mod.scrollIntoView({ behavior: 'smooth', block: 'center' });
       await new Promise(r => setTimeout(r, 1000));
@@ -433,6 +492,7 @@ async function startExamlyAutomation() {
       
       let waitLoops = 0;
       let isTest = false;
+      let alreadyCompleted = false;
 
       while (!currentVideoState.found && waitLoops < 20) {
           if (!window.examlyAutomationRunning) return;
@@ -442,9 +502,25 @@ async function startExamlyAutomation() {
               try { f.contentWindow.postMessage({ action: 'play_and_monitor_video' }, '*'); } catch(e){}
           });
           
+          // Check if this module is already completed
+          const retakeBtn = document.querySelector('button.retake-btn-color, #undefinedRetake\\ Test') || 
+                            Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer, span')).find(el => {
+              if (!el.innerText) return false;
+              const text = el.innerText.trim().toUpperCase();
+              return text.includes("RETAKE TEST") || text === "RETAKE";
+          });
+          
+          if (retakeBtn && retakeBtn.offsetParent !== null) {
+              alreadyCompleted = true;
+              break;
+          }
+
           // Check if this module is actually a test page!
-          const testAcceptBtn = document.querySelector('#tt-start-accept, #undefinedRetake\\ Test, #tt-header-submit');
-          const takeTestBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => el.innerText && el.innerText.trim().toUpperCase() === "TAKE TEST");
+          const testAcceptBtn = document.querySelector('#tt-start-accept, #tt-header-submit');
+          const takeTestBtn = Array.from(document.querySelectorAll('button, a, div.t-cursor-pointer')).find(el => {
+              if (!el.innerText) return false;
+              return el.innerText.trim().toUpperCase() === "TAKE TEST";
+          });
           
           if (testAcceptBtn || takeTestBtn) {
               isTest = true;
@@ -457,6 +533,12 @@ async function startExamlyAutomation() {
               currentVideoState.found = false; 
           }
           waitLoops++;
+      }
+      
+      if (alreadyCompleted) {
+          console.log("[Examly Auto] Module already completed (Retake Test found). Skipping immediately.");
+          await new Promise(r => setTimeout(r, 2000));
+          continue;
       }
       
       if (isTest) {
@@ -479,10 +561,9 @@ async function startExamlyAutomation() {
       while (!currentVideoState.finished && loops < safetyTimeout) {
           if (!window.examlyAutomationRunning) return;
           
-          currentModules = getModuleElements();
-          if (i < currentModules.length) {
-              currentModules[i].style.outline = "4px solid #ff00ff";
-              currentModules[i].style.boxShadow = "0 0 15px #ff00ff";
+          if (mod) {
+              mod.style.outline = "4px solid #ff00ff";
+              mod.style.boxShadow = "0 0 15px #ff00ff";
           }
 
           window.postMessage({ action: 'play_and_monitor_video' }, '*');
@@ -496,15 +577,14 @@ async function startExamlyAutomation() {
       
       console.log(`[Examly Auto] Video successfully finished!`);
       
-      currentModules = getModuleElements();
-      if (i < currentModules.length) {
-          currentModules[i].style.outline = "none";
-          currentModules[i].style.boxShadow = "none";
+      if (mod) {
+          mod.style.outline = "none";
+          mod.style.boxShadow = "none";
       }
       
       await new Promise(r => setTimeout(r, 3000));
   }
 
-  alert("Automation finished! No more videos detected.");
+  alert("Automation finished! No more unprocessed modules detected.");
   window.examlyAutomationRunning = false;
 }
