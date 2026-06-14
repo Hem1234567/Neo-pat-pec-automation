@@ -316,9 +316,91 @@ async function handleTestAutomation() {
             await new Promise(r => setTimeout(r, 3000));
             
             // basic check for monaco or generic coding interface
-            if (document.querySelector('.monaco-editor') || document.querySelector('app-monaco-editor') || document.querySelector('content-right')) {
+            if (document.querySelector('.monaco-editor') || document.querySelector('app-monaco-editor') || document.querySelector('content-right') || document.body.innerText.includes('Compile & Run')) {
                 // Scrape the left side to get the exact problem text
                 const leftSide = document.querySelector('content-left') || document.querySelector('.problem-statement, .description, .left-pane') || playground || document.body;
+                const problemSnippet = leftSide.innerText.substring(0, 500).trim();
+                
+                // 1. Check if Whitelist question
+                const pageText = document.body.innerText.toLowerCase();
+                if (pageText.includes('whitelist') || pageText.includes('whitelist syntaxes')) {
+                    console.log("[Examly Auto] Whitelist question detected! Skipping.");
+                    window.examlyWhitelistSkips = (window.examlyWhitelistSkips || 0) + 1;
+                    const unattemptedQuestions = document.querySelectorAll('[aria-labelledby="not-attempted"]');
+                    
+                    if (window.examlyWhitelistSkips >= Math.max(2, unattemptedQuestions.length + 1)) {
+                        console.log("[Examly Auto] All remaining unattempted questions are whitelist. ENDING TEST.");
+                        const mainSubmitBtn = document.querySelector('#tt-header-submit');
+                        if (mainSubmitBtn) mainSubmitBtn.click();
+                        await new Promise(r => setTimeout(r, 2000));
+                        
+                        let confirmInputs = Array.from(document.querySelectorAll('input[type="text"]'));
+                        for (let input of confirmInputs) {
+                            if (input.offsetParent !== null) {
+                                input.value = "END";
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                input.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                        }
+                        await new Promise(r => setTimeout(r, 1000));
+                        const confirmSubmit = Array.from(document.querySelectorAll('button')).find(btn => btn.offsetParent !== null && btn.innerText && btn.innerText.trim().toUpperCase() === "YES") || document.querySelector('#confirm-submit, button.primary-btn-color:not(#tt-header-submit)');
+                        if (confirmSubmit) confirmSubmit.click();
+                        
+                        testRunning = false;
+                        await new Promise(r => setTimeout(r, 5000));
+                        await closeTestInterface();
+                        continue;
+                    }
+
+                    // Click "Next" button to skip
+                    const nextBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.innerText && btn.innerText.trim() === 'Next');
+                    if (nextBtn && !nextBtn.disabled) {
+                        nextBtn.click();
+                    } else if (unattemptedQuestions.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * unattemptedQuestions.length);
+                        unattemptedQuestions[randomIndex].click();
+                    }
+                    await new Promise(r => setTimeout(r, 3000));
+                    continue;
+                }
+
+                // 2. Check if already solved
+                window.examlySolvedQuestions = window.examlySolvedQuestions || new Set();
+                if (window.examlySolvedQuestions.has(problemSnippet)) {
+                    console.log("[Examly Auto] Already solved this question. Navigating to another.");
+                    const unattemptedQuestions = document.querySelectorAll('[aria-labelledby="not-attempted"]');
+                    if (unattemptedQuestions.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * unattemptedQuestions.length);
+                        unattemptedQuestions[randomIndex].click();
+                        await new Promise(r => setTimeout(r, 3000));
+                    } else {
+                        console.log("[Examly Auto] No unattempted questions left. Manually triggering Submit Test...");
+                        const mainSubmitBtn = document.querySelector('#tt-header-submit');
+                        if (mainSubmitBtn) mainSubmitBtn.click();
+                        await new Promise(r => setTimeout(r, 2000));
+                        
+                        let confirmInputs = Array.from(document.querySelectorAll('input[type="text"]'));
+                        for (let input of confirmInputs) {
+                            if (input.offsetParent !== null) {
+                                input.value = "END";
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                input.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+                        }
+                        await new Promise(r => setTimeout(r, 1000));
+                        const confirmSubmit = Array.from(document.querySelectorAll('button')).find(btn => btn.offsetParent !== null && btn.innerText && btn.innerText.trim().toUpperCase() === "YES") || document.querySelector('#confirm-submit, button.primary-btn-color:not(#tt-header-submit)');
+                        if (confirmSubmit) confirmSubmit.click();
+                        
+                        testRunning = false;
+                        await new Promise(r => setTimeout(r, 5000));
+                        await closeTestInterface();
+                    }
+                    continue;
+                }
+
+                // Proceed to solve
+                window.examlyWhitelistSkips = 0; // reset skips
+                
                 const prompt = `Solve this coding problem in Java. Return ONLY raw valid code. No markdown blocks. Problem text:\n\n${leftSide.innerText.substring(0, 3000)}`;
                 const code = await askGemini(prompt);
                 if (code) {
@@ -343,6 +425,7 @@ async function handleTestAutomation() {
                 if (submitCodeBtn) {
                     console.log("[Examly Auto] Clicking Submit Code button...");
                     submitCodeBtn.click();
+                    window.examlySolvedQuestions.add(problemSnippet);
                     await new Promise(r => setTimeout(r, 3000));
                 }
 
